@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SGCAE.Api/SGCAE.Api.csproj" />
+  <Project Path="SGCAE.Application/SGCAE.Application.csproj" />
+  <Project Path="SGCAE.Domain/SGCAE.Domain.csproj" />
+  <Project Path="SGCAE.Persistence/SGCAE.Persistence.csproj" />
+</Solution>
