@@ -1,41 +1,46 @@
-var builder = WebApplication.CreateBuilder(args);
+using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using SGCAE.Api.Middleware;
+using SGCAE.Application;
+using SGCAE.Persistence;
+using SGCAE.Persistence.Seeds;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+
+builder.Services.AddApplicationServices();
+builder.Services.AddPersistenceServices(builder.Configuration);
+
+WebApplication app = builder.Build();
+
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
+    
+    using (IServiceScope scope = app.Services.CreateScope())
+    {
+        await scope.ServiceProvider.GetRequiredService<SGCAEDbContext>().Database.MigrateAsync();
+    }
+
+    await DataBaseSeeder.SeedAsync(app.Services);
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
