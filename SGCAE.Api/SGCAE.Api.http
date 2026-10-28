@@ -1,0 +1,247 @@
+# Ejemplos de peticiones de la API SGCAE.
+# Ejecutar la API con:  dotnet run --project SGCAE.Api --launch-profile http
+# Compatible con Visual Studio y con la extensión REST Client de VS Code.
+
+@baseUrl = http://localhost:5080
+
+# Reemplazar estos valores por ids reales obtenidos de las consultas GET.
+@empleadoId = 00000000-0000-0000-0000-000000000001
+@credencialId = 00000000-0000-0000-0000-000000000002
+@puntoId = 00000000-0000-0000-0000-000000000003
+
+
+########################################################
+# EMPLEADOS (RF-01)
+########################################################
+
+### Registrar un empleado  ->  201 Created  { "id": "..." }
+POST {{baseUrl}}/api/empleados
+Content-Type: application/json
+
+{
+  "identificacion": "2001",
+  "nombres": "Sofía",
+  "apellidos": "Ramírez Cano",
+  "correo": "sofia.ramirez@sgcae.com",
+  "cargo": "Auxiliar de despachos",
+  "area": "Operaciones"
+}
+
+### Listar empleados (paginado)  ->  200 OK
+GET {{baseUrl}}/api/empleados?pageNumber=1&pageSize=15
+Accept: application/json
+
+### Consultar un empleado por id  ->  200 OK
+GET {{baseUrl}}/api/empleados/{{empleadoId}}
+Accept: application/json
+
+### Actualizar un empleado  ->  204 No Content
+PUT {{baseUrl}}/api/empleados/{{empleadoId}}
+Content-Type: application/json
+
+{
+  "nombres": "Sofía",
+  "apellidos": "Ramírez Cano",
+  "correo": "sofia.ramirez@sgcae.com",
+  "cargo": "Coordinadora de despachos",
+  "area": "Operaciones"
+}
+
+### Desactivar un empleado  ->  204 No Content
+PATCH {{baseUrl}}/api/empleados/{{empleadoId}}/desactivar
+
+
+########################################################
+# CREDENCIALES (RF-02)
+########################################################
+
+### Asignar una credencial  ->  201 Created  { "id": "..." }
+POST {{baseUrl}}/api/credenciales
+Content-Type: application/json
+
+{
+  "empleadoId": "{{empleadoId}}",
+  "codigo": "SOFIA-001"
+}
+
+### Consultar una credencial y su estado  ->  200 OK
+GET {{baseUrl}}/api/credenciales/{{credencialId}}
+Accept: application/json
+
+### Credenciales de un empleado  ->  200 OK
+GET {{baseUrl}}/api/empleados/{{empleadoId}}/credenciales
+Accept: application/json
+
+### Bloquear una credencial  ->  204 No Content
+PATCH {{baseUrl}}/api/credenciales/{{credencialId}}/bloquear
+
+### Revocar una credencial  ->  204 No Content
+PATCH {{baseUrl}}/api/credenciales/{{credencialId}}/revocar
+
+
+########################################################
+# PUNTOS DE ACCESO (RF-06)
+########################################################
+
+### Registrar un punto de acceso  ->  201 Created  { "id": "..." }
+POST {{baseUrl}}/api/puntos-acceso
+Content-Type: application/json
+
+{
+  "nombre": "Muelle de descarga 2",
+  "descripcion": "Zona de recepción de mercancía"
+}
+
+### Listar puntos de acceso (cada uno indica si está habilitado)  ->  200 OK
+GET {{baseUrl}}/api/puntos-acceso
+Accept: application/json
+
+### Consultar un punto de acceso  ->  200 OK
+GET {{baseUrl}}/api/puntos-acceso/{{puntoId}}
+Accept: application/json
+
+### Deshabilitar un punto de acceso  ->  204 No Content
+PATCH {{baseUrl}}/api/puntos-acceso/{{puntoId}}/estado
+Content-Type: application/json
+
+{
+  "habilitado": false
+}
+
+
+########################################################
+# ACCESOS (RF-03 y RF-04)
+########################################################
+
+### Acceso AUTORIZADO: Laura entra por el punto indicado  ->  200  resultado "Autorizado"
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "LAURA-001",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Entrada"
+}
+
+### Acceso RECHAZADO: la credencial de Andrés está bloqueada  ->  200  motivo "CredencialNoVigente"
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "ANDRES-001",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Entrada"
+}
+
+### Acceso RECHAZADO: Marcela está inactiva  ->  200  motivo "EmpleadoInactivo"
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "MARCELA-001",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Entrada"
+}
+
+### Acceso RECHAZADO: código que no existe  ->  200  motivo "CredencialNoEncontrada"
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "NOEXISTE-9",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Entrada"
+}
+
+### Acceso RECHAZADO: sale alguien que no ha entrado  ->  200  motivo "NoHaIngresado"
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "CARLOS-001",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Salida"
+}
+
+### Historial completo (paginado)  ->  200 OK
+GET {{baseUrl}}/api/accesos?pageNumber=1&pageSize=15
+Accept: application/json
+
+### Historial: solo los accesos rechazados  ->  200 OK
+GET {{baseUrl}}/api/accesos?resultado=Rechazado
+Accept: application/json
+
+### Historial: por empleado y rango de fechas (UTC)  ->  200 OK
+GET {{baseUrl}}/api/accesos?empleadoId={{empleadoId}}&desde=2026-10-01T00:00:00Z&hasta=2026-12-31T23:59:59Z
+Accept: application/json
+
+
+########################################################
+# ERRORES DE VALIDACIÓN DE DOMINIO
+########################################################
+
+### Empleado con correo inválido  ->  400  { "error": "El correo electrónico no tiene un formato válido." }
+POST {{baseUrl}}/api/empleados
+Content-Type: application/json
+
+{
+  "identificacion": "2002",
+  "nombres": "Ana",
+  "apellidos": "Prueba",
+  "correo": "esto-no-es-un-correo",
+  "cargo": "Auxiliar",
+  "area": "Operaciones"
+}
+
+### Empleado con identificación repetida  ->  400  { "error": "Ya existe un empleado con esa identificación." }
+POST {{baseUrl}}/api/empleados
+Content-Type: application/json
+
+{
+  "identificacion": "1001",
+  "nombres": "Ana",
+  "apellidos": "Prueba",
+  "correo": "ana.prueba@sgcae.com",
+  "cargo": "Auxiliar",
+  "area": "Operaciones"
+}
+
+### Credencial con código repetido  ->  400  { "error": "Ya existe una credencial con ese código." }
+POST {{baseUrl}}/api/credenciales
+Content-Type: application/json
+
+{
+  "empleadoId": "{{empleadoId}}",
+  "codigo": "LAURA-001"
+}
+
+### Bloquear una credencial que ya está bloqueada  ->  400  { "error": "La credencial ya está bloqueada." }
+PATCH {{baseUrl}}/api/credenciales/{{credencialId}}/bloquear
+
+### Acceso con un código mal formado  ->  400  { "error": "El código de la credencial solo puede contener letras, números y guiones." }
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "codigo con espacios!",
+  "puntoAccesoId": "{{puntoId}}",
+  "tipo": "Entrada"
+}
+
+### Acceso en un punto de acceso que no existe  ->  404  { "error": "El punto de acceso no existe." }
+POST {{baseUrl}}/api/accesos
+Content-Type: application/json
+
+{
+  "codigo": "LAURA-001",
+  "puntoAccesoId": "11111111-1111-1111-1111-111111111111",
+  "tipo": "Entrada"
+}
+
+### Empleado que no existe  ->  404  { "error": "El empleado no existe." }
+GET {{baseUrl}}/api/empleados/11111111-1111-1111-1111-111111111111
+Accept: application/json
+
+### Historial con el rango de fechas invertido  ->  400  { "error": "La fecha inicial no puede ser posterior a la fecha final." }
+GET {{baseUrl}}/api/accesos?desde=2026-12-31T00:00:00Z&hasta=2026-01-01T00:00:00Z
+Accept: application/json
